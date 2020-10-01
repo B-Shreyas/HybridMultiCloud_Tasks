@@ -197,26 +197,37 @@ resource "aws_security_group" "mysqlserversecurity" {
 }
 
 resource "aws_instance" "wordpress" {
-  ami           = "ami-000cbce3e1b899ebd"
+  ami           = "ami-0732b62d310b80e97"
   instance_type = "t2.micro"
   associate_public_ip_address = true
   subnet_id = aws_subnet.public.id
   vpc_security_group_ids = ["${aws_security_group.mywebsecurity.id}"]
   key_name = "task4"
   availability_zone = "ap-south-1a"
-
+  user_data = <<EOF
+            #! /bin/bash
+            yum update
+            yum install docker -y
+            systemctl restart docker
+            systemctl enable docker
+            docker pull wordpress
+            docker run --name wordpress -p 80:80 -e WORDPRESS_DB_HOST=${aws_instance.mysql.private_ip} \
+            -e WORDPRESS_DB_USER=root -e WORDPRESS_DB_PASSWORD=root -e WORDPRESS_DB_NAME=wordpressdb -d wordpress
+  EOF
+  
   tags = {
     Name = "wordpress"
   }
 
 }
 resource "aws_instance" "mysql" {
-  ami           = "ami-08706cb5f68222d09"
+  ami           = "ami-0732b62d310b80e97"
   instance_type = "t2.micro"
   subnet_id = aws_subnet.private.id
   vpc_security_group_ids = ["${aws_security_group.mysqlsecurity.id}","${aws_security_group.mysqlserversecurity.id}"]
   key_name = "task4"
   availability_zone = "ap-south-1b"
+  user_data = file("configure_mysql.sh")
 
  tags = {
     Name = "mysql"
